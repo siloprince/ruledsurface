@@ -1,0 +1,267 @@
+
+<!DOCTYPE HTML>
+<HTML>
+ <HEAD>
+  <TITLE> New Document </TITLE>
+  <META charset="UTF-8">
+ </HEAD>
+
+ <BODY>
+	<script type="text/javascript" src="https://www.googledrive.com/host/0B-0akIz8Zlu4M3U5eTdpeUZMVkk"></script>
+	<script type="text/javascript" src="./otherRuled.js"></script>
+	<div style="width:720px; margin:auto; position:relative; font-size: 9pt; color: #777777;">
+        <table><tr><td>
+	<div style="width:120pt;">
+	<h3>線織面生成ツール</h3>
+	<li>Google Chromeが推奨
+	<li>スライダを選択し矢印キーで形状を動かせる
+	<br/>
+	<br/>タイプ
+	<br/>
+	<select id="type" onchange="update()">
+	<option value="plucker">Plucker's conoid</option>
+	<option value="mobius">メビウスの帯</option>
+	</select>
+	<input type="hidden" id="type_down"/>
+	<br/>
+	<br/>
+	<script type="text/javascript">
+	var htmlArray = [];
+	for( pk in ruledSurface.parameter ) {
+		htmlArray.push('<dt>'+ruledSurface.parameter[pk].description+':  <span id="'+pk+'_val">'+ruledSurface.parameter[pk].value+'</span>');
+		htmlArray.push('<input type="range" '
+			+'id="'+pk+'" '
+			+'min="'+ruledSurface.parameter[pk].min+'" '
+			+'max="'+ruledSurface.parameter[pk].max+'" '
+			+'step="'+ruledSurface.parameter[pk].step+'" '
+			+'value="'+ruledSurface.parameter[pk].value+'" '
+		+' oninput="update()"/>');
+	}
+	document.write(htmlArray.join(''));
+	</script>
+	<br/>
+	<button onclick="reset()">リセット</button>
+	<br/>
+	<li>値はURLに記録される
+	<br/>
+	<div style='display:none'>
+	<a id="download"></a>
+	</div>
+	<button onclick="download()">objファイルを出力</button>
+	<br/>
+	<br/>
+	<li>ドラッグすると回転
+	<li>Shift+ドラッグで移動
+	<li>Alt+ドラッグで拡大
+	</div>
+	</td>
+	<td>
+		<canvas id="cv" style="border: 1px solid;" width="720" height="540" ></canvas>
+	</td></tr></table>
+	</div>
+	<script type="text/javascript" src="https://www.googledrive.com/host/0B-0akIz8Zlu4cVA1Q05uc0YwNU0"></script>
+	<script type="text/javascript" src="https://www.googledrive.com/host/0B-0akIz8Zlu4UkNUNmpOVXRGbUU"></script>
+	<script type="text/javascript">
+	var canvas = document.getElementById('cv');
+	var viewer = new JSC3D.Viewer(canvas);
+	viewer.customHandler = customHandler;
+
+	getFromLocationHash();
+	viewer.setParameter('InitRotationX', 0);
+	viewer.setParameter('InitRotationY', 0);
+	viewer.setParameter('InitRotationZ', 90);
+	viewer.setParameter('ModelColor', '#CC0000');
+	viewer.setParameter('BackgroundColor1', '#FFFFFF');
+	viewer.setParameter('BackgroundColor2', '#383840');
+	viewer.setParameter('RenderMode', 'texturesmooth');
+	viewer.setParameter('Renderer', 'webgl');
+	refresh();
+	setView();
+
+	function setView() {
+		var tmp = {};
+		if ( !(/,/.test(document.location.hash))) {
+			resetView();
+			return;
+		}
+		var tmp = eval('(function(){return {'+document.location.hash.replace(/^#/,'')+'};})();');
+		if ( tmp.zoomFactor !== null ) {
+			viewer.zoomFactor = parseFloat(tmp.zoomFactor);
+		}
+		if ( tmp.panning ) {
+			viewer.panning = [
+						parseFloat(tmp.panning[0]),
+						parseFloat(tmp.panning[1]),
+					];
+		}
+		if ( tmp.rot ) {
+			viewer.rotMatrix.m00 = tmp.rot[0];
+			viewer.rotMatrix.m01 = tmp.rot[1];
+			viewer.rotMatrix.m02 = tmp.rot[2];
+			viewer.rotMatrix.m10 = tmp.rot[3];
+			viewer.rotMatrix.m11 = tmp.rot[4];
+			viewer.rotMatrix.m12 = tmp.rot[5];
+			viewer.rotMatrix.m20 = tmp.rot[6];
+			viewer.rotMatrix.m21 = tmp.rot[7];
+			viewer.rotMatrix.m22 = tmp.rot[8];
+
+			viewer.rotMatrix.m03 = 0;
+			viewer.rotMatrix.m13 = 0;
+			viewer.rotMatrix.m23 = 0;
+		}
+	}
+	function reset() {
+		var param = {};
+		for( pk in ruledSurface.parameter ) {
+			param[pk] = ruledSurface.parameter[pk].value;
+			document.getElementById(pk).value = param[pk];
+			document.getElementById(pk+'_val').innerText = param[pk];
+		}
+		// not reset type
+		var type = document.getElementById('type').value;
+		var type_down = document.getElementById('type_down').value;
+		viewer.setParameter('SceneUrl', 'data:text/plain,'+ruledSurface.obj(param,type,type_down));
+		viewer.init();
+		viewer.update();
+		resetView();
+		putToLocationHash();
+	}
+	function resetView() {
+		viewer.zoomFactor = 100;
+		viewer.panning = [0,0];
+		viewer.rotMatrix.m00 = 0.48;
+		viewer.rotMatrix.m01 = 0.61;
+		viewer.rotMatrix.m02 =-0.62;
+		viewer.rotMatrix.m10 = 0.10;
+		viewer.rotMatrix.m11 = 0.66;
+		viewer.rotMatrix.m12 = 0.76;
+		viewer.rotMatrix.m20 = 0.88;
+		viewer.rotMatrix.m21 =-0.43;
+		viewer.rotMatrix.m22 = 0.25;
+		viewer.rotMatrix.m30 = 0.00;
+		viewer.rotMatrix.m31 = 0.00;
+		viewer.rotMatrix.m32 = 0.00;
+	}
+	function refresh() {
+		var param = {};
+		for( pk in ruledSurface.parameter ) {
+			if ( document.getElementById(pk) ) {
+				param[pk] = parseFloat(document.getElementById(pk).value);
+			}
+			var setval = document.getElementById(pk+'_val');
+			if ( setval ) {
+					setval.textContent = param[pk];
+			}
+		};
+		var type = document.getElementById('type').value;
+		var type_down = document.getElementById('type_down').value;
+		viewer.setParameter('SceneUrl', 'data:text/plain,'+ruledSurface.obj(param,type,type_down));
+		viewer.init();
+		viewer.update();
+		setView();
+        }
+	function update() {
+		refresh();
+		putToLocationHash();
+	}
+	function customHandler () {
+		putToLocationHash();
+	}
+	function putToLocationHash() {
+		var type = document.getElementById('type').value;
+		var type_down = document.getElementById('type_down').value;
+		var param = {};
+		for( pk in ruledSurface.parameter ) {
+			if ( document.getElementById(pk) ) {
+				param[pk] = parseFloat(document.getElementById(pk).value);
+			}
+		};
+		var viewParam = {
+			zoomFactor: viewer.zoomFactor.toFixed(4),
+			panning: [viewer.panning[0].toFixed(2),viewer.panning[1].toFixed(2)],
+			rot: [
+				viewer.rotMatrix.m00.toFixed(2),
+				viewer.rotMatrix.m01.toFixed(2),
+				viewer.rotMatrix.m02.toFixed(2),
+				viewer.rotMatrix.m10.toFixed(2),
+				viewer.rotMatrix.m11.toFixed(2),
+				viewer.rotMatrix.m12.toFixed(2),
+				viewer.rotMatrix.m20.toFixed(2),
+				viewer.rotMatrix.m21.toFixed(2),
+				viewer.rotMatrix.m22.toFixed(2),
+			],
+		};
+		document.location.hash = 'type:"'+type+'",type_down:"'+type_down+'",'+JSON.stringify(param).replace(/("|{|}|\s)/g,'')+','+JSON.stringify(viewParam).replace(/("|{|}|\s)/g,'');
+	}
+	function getFromLocationHash() {
+		var ret = {};
+		var tmp = {};
+		var type;
+		var type_down;
+		if ( /,/.test(document.location.hash)) {
+			var tmp = eval('(function(){return {'+document.location.hash.replace(/^#/,'')+'};})();');
+			if ( tmp.type ) {
+				type = tmp.type;
+			} else {
+				type = 'circle';
+			}
+			if ( tmp.type_down ) {
+				type_down = tmp.type_down;
+			} else {
+				type_down = type;
+			}
+			document.getElementById('type').value = type;
+			document.getElementById('type_down').value = type_down;
+			for( pk in ruledSurface.parameter ) {
+				if ( document.getElementById(pk) ) {
+					var val;
+					if (tmp[pk] !==null) {
+						val = parseFloat(tmp[pk]);
+					} else {
+						val = ruledSurface.parameter[pk].value;
+					}
+					document.getElementById(pk).value = val;
+					ret[pk] = val;
+				}
+			};
+		} else {
+			type = 'circle';
+			type_down = 'circle';
+			for( pk in ruledSurface.parameter ) {
+				ret[pk] = ruledSurface.parameter[pk].value;
+			}
+		}
+		return {
+			type: type,
+			type_down: type_down,
+			param: ret,
+		};
+	}
+	function download () {
+		var download = document.getElementById('download');
+		var type = document.getElementById('type').value;
+		var type_down = document.getElementById('type_down').value;
+		var param = {};
+		var values = [];
+		for( pk in ruledSurface.parameter ) {
+			if ( document.getElementById(pk) ) {
+				param[pk] = parseFloat(document.getElementById(pk).value);
+				values.push(param[pk]);
+			}
+		};
+		var dense = document.getElementById('dense').value;
+		var height = document.getElementById('height').value;
+		var slide = document.getElementById('slide').value;
+		var angle = document.getElementById('angle').value;
+		var axisx = document.getElementById('axisx').value;
+		var axisz = document.getElementById('axisz').value;
+		var filename = 'ruledSurface_'+type+'_'+type_down+'_'+JSON.stringify(values).replace(/(\[|\s|\])/g,'').replace(/,/g,'_').replace(/_$/,'')+'.obj';
+		var url='data:text/plain;base64,'+window.btoa(ruledSurface.obj(param,type,type_down));
+		download.setAttribute('href',url);
+		download.setAttribute('download',filename);
+		download.click();
+	}
+  </script>
+ </BODY>
+</HTML>
+
